@@ -33,15 +33,59 @@ interface CreateQuizProps {
  * .btn-add-question, .btn-remove, .btn-primary
  */
 function CreateQuiz({ onSubmit }: CreateQuizProps) {
-  // TODO: State pour le titre
-  // TODO: State pour la liste des questions
+  const createEmptyQuestion = (): QuizQuestion => ({
+    id: crypto.randomUUID(),
+    text: '',
+    choices: ['', '', '', ''],
+    correctIndex: 0,
+    timerSec: 20,
+  })
+
+  const [title, setTitle] = useState('')
+  const [questions, setQuestions] = useState<QuizQuestion[]>([createEmptyQuestion()])
+
+  const updateQuestion = (questionId: string, updater: (question: QuizQuestion) => QuizQuestion) => {
+    setQuestions((prev) => prev.map((question) => (question.id === questionId ? updater(question) : question)))
+  }
+
+  const addQuestion = () => {
+    setQuestions((prev) => [...prev, createEmptyQuestion()])
+  }
+
+  const removeQuestion = (questionId: string) => {
+    setQuestions((prev) => prev.filter((question) => question.id !== questionId))
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Valider que le titre n'est pas vide
-    // TODO: Valider qu'il y a au moins 1 question
-    // TODO: Valider que chaque question a un texte et 4 choix non-vides
-    // TODO: Appeler onSubmit(title, questions)
+
+    const normalizedTitle = title.trim()
+    if (!normalizedTitle) {
+      alert('Le titre du quiz est requis.')
+      return
+    }
+
+    if (questions.length === 0) {
+      alert('Ajoutez au moins une question.')
+      return
+    }
+
+    const normalizedQuestions = questions.map((question) => ({
+      ...question,
+      text: question.text.trim(),
+      choices: question.choices.map((choice) => choice.trim()),
+    }))
+
+    const hasInvalidQuestion = normalizedQuestions.some(
+      (question) => !question.text || question.choices.length !== 4 || question.choices.some((choice) => !choice)
+    )
+
+    if (hasInvalidQuestion) {
+      alert('Chaque question doit avoir un texte et 4 choix non vides.')
+      return
+    }
+
+    onSubmit(normalizedTitle, normalizedQuestions)
   }
 
   return (
@@ -53,67 +97,94 @@ function CreateQuiz({ onSubmit }: CreateQuizProps) {
           <input
             id="quiz-title"
             type="text"
-            value=""
-            onChange={(event) => {}}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
             placeholder="Ex: Culture generale"
           />
         </div>
 
-          <div className="question-card">
+        {questions.map((question, index) => (
+          <div key={question.id} className="question-card">
             <div className="question-card-header">
-              <h3>Question</h3>
+              <h3>Question {index + 1}</h3>
               <button
                 type="button"
                 className="btn-remove"
-                onClick={() => {}}
+                onClick={() => removeQuestion(question.id)}
+                disabled={questions.length === 1}
               >
                 Supprimer
               </button>
             </div>
 
             <div className="form-group">
-              <label>Texte de la question</label>
+              <label htmlFor={`question-text-${question.id}`}>Texte de la question</label>
               <input
-                id={`question-text`}
+                id={`question-text-${question.id}`}
                 type="text"
-                value=""
-                onChange={(event) => {}}
+                value={question.text}
+                onChange={(event) =>
+                  updateQuestion(question.id, (currentQuestion) => ({
+                    ...currentQuestion,
+                    text: event.target.value,
+                  }))
+                }
                 placeholder="Ex: Quelle est la capitale de la France ?"
               />
             </div>
 
             <div className="choices-inputs">
-                <div className="choice-input-group">
+              {question.choices.map((choice, choiceIndex) => (
+                <div key={`${question.id}-${choiceIndex}`} className="choice-input-group">
                   <input
                     type="radio"
-                    name=""
-                    checked={false}
-                    onChange={() => {}}
+                    name={`correct-${question.id}`}
+                    checked={question.correctIndex === choiceIndex}
+                    onChange={() =>
+                      updateQuestion(question.id, (currentQuestion) => ({
+                        ...currentQuestion,
+                        correctIndex: choiceIndex,
+                      }))
+                    }
+                    aria-label={`Bonne reponse choix ${choiceIndex + 1}`}
                   />
                   <input
                     type="text"
-                    value=""
-                    onChange={() => {}}
-                    placeholder={`Choix 1 (ex: Paris)`}
+                    value={choice}
+                    onChange={(event) =>
+                      updateQuestion(question.id, (currentQuestion) => ({
+                        ...currentQuestion,
+                        choices: currentQuestion.choices.map((currentChoice, currentChoiceIndex) =>
+                          currentChoiceIndex === choiceIndex ? event.target.value : currentChoice
+                        ),
+                      }))
+                    }
+                    placeholder={`Choix ${choiceIndex + 1}`}
                   />
                 </div>
+              ))}
             </div>
 
             <div className="form-group">
-              <label>Duree (secondes)</label>
+              <label htmlFor={`timer-${question.id}`}>Duree (secondes)</label>
               <input
-                id="question-timer"
+                id={`timer-${question.id}`}
                 type="number"
                 min={5}
                 max={120}
-                value=""
-                onChange={() => {}}
-                placeholder="Ex: 30"
+                value={question.timerSec}
+                onChange={(event) =>
+                  updateQuestion(question.id, (currentQuestion) => ({
+                    ...currentQuestion,
+                    timerSec: Number(event.target.value) || 0,
+                  }))
+                }
               />
             </div>
           </div>
+        ))}
 
-        <button type="button" className="btn-add-question" onClick={() => {}}>
+        <button type="button" className="btn-add-question" onClick={addQuestion}>
           Ajouter une question
         </button>
 
