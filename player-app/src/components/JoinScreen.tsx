@@ -27,22 +27,62 @@ interface JoinScreenProps {
  * .error-message, .btn-primary
  */
 function JoinScreen({ onJoin, error }: JoinScreenProps) {
-  // TODO: State pour le code du quiz
-  // TODO: State pour le pseudo
+  const [code, setCode] = useState('')
+  const [name, setName] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Valider que les champs ne sont pas vides
-    // TODO: Appeler onJoin(code.toUpperCase(), name)
+
+    const normalizedCode = code.trim().toUpperCase()
+    const normalizedName = name.trim()
+
+    if (!normalizedCode || !normalizedName) {
+      return
+    }
+
+    onJoin(normalizedCode, normalizedName)
   }
 
   return (
     <form className="join-form" onSubmit={handleSubmit}>
       <h1>Rejoindre un Quiz</h1>
-      {/* TODO: Afficher l'erreur si elle existe */}
-      {/* TODO: Champ code du quiz avec classe .code-input */}
-      {/* TODO: Champ pseudo */}
-      {/* TODO: Bouton Rejoindre */}
+
+      {error && <p className="error-message">{error}</p>}
+
+      <div className="form-group">
+        <label htmlFor="quiz-code">Code du quiz</label>
+        <input
+          id="quiz-code"
+          className="code-input"
+          type="text"
+          value={code}
+          onChange={(event) => setCode(event.target.value.toUpperCase())}
+          maxLength={6}
+          placeholder="ABC123"
+          autoComplete="off"
+        />
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="player-name">Pseudo</label>
+        <input
+          id="player-name"
+          type="text"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          maxLength={24}
+          placeholder="Votre pseudo"
+          autoComplete="off"
+        />
+      </div>
+
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={!code.trim() || !name.trim()}
+      >
+        Rejoindre
+      </button>
     </form>
   )
 }
