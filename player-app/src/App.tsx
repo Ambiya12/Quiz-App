@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
-import type { QuizPhase, QuizQuestion } from '@shared/index'
+import type { QuizPhase, QuizQuestion, ServerMessage } from '@shared/index'
 import JoinScreen from './components/JoinScreen'
 import WaitingLobby from './components/WaitingLobby'
 import AnswerScreen from './components/AnswerScreen'
@@ -24,6 +24,7 @@ function App() {
   const [currentQuestion, setCurrentQuestion] = useState<Omit<QuizQuestion, 'correctIndex'> | null>(null)
   const [remaining, setRemaining] = useState(0)
   const [hasAnswered, setHasAnswered] = useState(false)
+  const [lastAnswerChoiceIndex, setLastAnswerChoiceIndex] = useState<number | null>(null)
   const [lastCorrect, setLastCorrect] = useState(false)
   const [score, setScore] = useState(0)
   const [rankings, setRankings] = useState<{ name: string; score: number }[]>([])
@@ -33,52 +34,56 @@ function App() {
   useEffect(() => {
     if (!lastMessage) return
 
-    // TODO: Traiter chaque type de message du serveur
-    // Utiliser un switch sur lastMessage.type
+    const message: ServerMessage = lastMessage
 
-    switch (lastMessage.type) {
+    switch (message.type) {
       case 'joined': {
-        // TODO: Mettre a jour la liste des joueurs
-        // TODO: Passer en phase 'lobby'
-        // TODO: Effacer les erreurs
+        setPlayers(message.players)
+        setError(undefined)
+        setPhase('lobby')
         break
       }
 
       case 'question': {
-        // TODO: Mettre a jour currentQuestion avec lastMessage.question
-        // TODO: Mettre a jour remaining avec lastMessage.question.timerSec
-        // TODO: Reinitialiser hasAnswered a false
-        // TODO: Changer la phase en 'question'
+        setCurrentQuestion(message.question)
+        setRemaining(message.question.timerSec)
+        setHasAnswered(false)
+        setLastAnswerChoiceIndex(null)
+        setPhase('question')
         break
       }
 
       case 'tick': {
-        // TODO: Mettre a jour remaining avec lastMessage.remaining
+        setRemaining(message.remaining)
         break
       }
 
       case 'results': {
-        // TODO: Verifier si le joueur a repondu correctement
-        //   (comparer la reponse du joueur avec lastMessage.correctIndex)
-        // TODO: Mettre a jour lastCorrect (true/false)
-        // TODO: Recuperer le score du joueur depuis lastMessage.scores
-        // TODO: Changer la phase en 'feedback'
+        const isCorrect = hasAnswered && lastAnswerChoiceIndex === message.correctIndex
+        setLastCorrect(isCorrect)
+        setScore(message.scores[playerName] ?? 0)
+        setPhase('feedback')
         break
       }
 
       case 'leaderboard': {
-        // TODO: Mettre a jour rankings avec lastMessage.rankings
-        // TODO: Changer la phase en 'leaderboard'
+        setRankings(message.rankings)
+        setPhase('leaderboard')
         break
       }
 
       case 'ended': {
-        // TODO: Changer la phase en 'ended'
+        setPhase('ended')
         break
       }
 
       case 'error': {
-        // TODO: Stocker le message d'erreur dans le state error
+        setError(message.message)
+        console.error('[Player] Erreur serveur:', message.message)
+        break
+      }
+
+      case 'sync': {
         break
       }
     }
@@ -88,15 +93,30 @@ function App() {
 
   /** Appele quand le joueur soumet le formulaire de connexion */
   const handleJoin = (code: string, name: string) => {
-    // TODO: Sauvegarder le nom du joueur dans playerName
-    // TODO: Envoyer un message 'join' au serveur avec sendMessage
+    const normalizedCode = code.trim().toUpperCase()
+    const normalizedName = name.trim()
+
+    if (!normalizedCode || !normalizedName) {
+      setError('Le code du quiz et le pseudo sont requis.')
+      return
+    }
+
+    setPlayerName(normalizedName)
+    setError(undefined)
+    sendMessage({ type: 'join', quizCode: normalizedCode, name: normalizedName })
   }
 
   /** Appele quand le joueur clique sur un choix de reponse */
   const handleAnswer = (choiceIndex: number) => {
-    // TODO: Verifier que le joueur n'a pas deja repondu (hasAnswered)
-    // TODO: Marquer hasAnswered a true
-    // TODO: Envoyer un message 'answer' au serveur avec l'id de la question et le choiceIndex
+    if (hasAnswered || !currentQuestion) return
+
+    setHasAnswered(true)
+    setLastAnswerChoiceIndex(choiceIndex)
+    sendMessage({
+      type: 'answer',
+      questionId: currentQuestion.id,
+      choiceIndex,
+    })
   }
 
   // --- Rendu par phase ---
@@ -133,7 +153,21 @@ function App() {
           <div className="phase-container">
             <h1>Quiz termine !</h1>
             <p className="ended-message">Merci d'avoir participe !</p>
-            <button className="btn-primary" onClick={() => setPhase('join')}>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                setPhase('join')
+                setPlayers([])
+                setCurrentQuestion(null)
+                setRemaining(0)
+                setHasAnswered(false)
+                setLastAnswerChoiceIndex(null)
+                setLastCorrect(false)
+                setScore(0)
+                setRankings([])
+                setError(undefined)
+              }}
+            >
               Rejoindre un autre quiz
             </button>
           </div>
