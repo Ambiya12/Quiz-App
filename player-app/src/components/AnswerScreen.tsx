@@ -3,7 +3,7 @@
 // A IMPLEMENTER : question, timer, 4 boutons colores
 // ============================================================
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { QuizQuestion } from '@shared/index'
 
 interface AnswerScreenProps {
@@ -34,19 +34,47 @@ interface AnswerScreenProps {
  * .answer-question, .answer-grid, .answer-btn, .selected, .answered-message
  */
 function AnswerScreen({ question, remaining, onAnswer, hasAnswered }: AnswerScreenProps) {
-  // TODO: State optionnel pour stocker l'index du choix selectionne
+  const [selectedChoiceIndex, setSelectedChoiceIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    setSelectedChoiceIndex(null)
+  }, [question.id])
 
   const handleClick = (index: number) => {
-    // TODO: Appeler onAnswer(index)
-    // TODO: Optionnel : sauvegarder l'index selectionne pour le style .selected
+    if (hasAnswered) return
+
+    setSelectedChoiceIndex(index)
+    onAnswer(index)
   }
+
+  const timerClassName =
+    remaining <= 3
+      ? 'answer-timer danger'
+      : remaining <= 10
+        ? 'answer-timer warning'
+        : 'answer-timer'
 
   return (
     <div className="answer-screen">
-      {/* TODO: Timer avec .answer-timer (+ .warning / .danger selon remaining) */}
-      {/* TODO: Texte de la question avec .answer-question */}
-      {/* TODO: Grille de 4 boutons avec .answer-grid et .answer-btn */}
-      {/* TODO: Message "Reponse envoyee !" si hasAnswered */}
+      <div className={timerClassName}>{remaining}</div>
+
+      <p className="answer-question">{question.text}</p>
+
+      <div className="answer-grid">
+        {question.choices.map((choice, index) => (
+          <button
+            key={`${question.id}-${index}`}
+            type="button"
+            className={`answer-btn ${selectedChoiceIndex === index ? 'selected' : ''}`}
+            onClick={() => handleClick(index)}
+            disabled={hasAnswered}
+          >
+            {choice}
+          </button>
+        ))}
+      </div>
+
+      {hasAnswered && <p className="answered-message">Reponse envoyee !</p>}
     </div>
   )
 }
