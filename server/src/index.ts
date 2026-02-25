@@ -1,8 +1,3 @@
-// ============================================================
-// Serveur WebSocket - Point d'entree
-// A IMPLEMENTER : remplir les cas du switch avec la logique
-// ============================================================
-
 import { createServer } from 'http'
 import { WebSocketServer, WebSocket } from 'ws'
 import type { ClientMessage } from '../../packages/shared-types'
@@ -53,11 +48,18 @@ wss.on('connection', (ws: WebSocket) => {
       // Un joueur veut rejoindre un quiz
       // ============================================================
       case 'join': {
-        // TODO: Recuperer la salle avec message.quizCode depuis la map rooms
-        // TODO: Si la salle n'existe pas, envoyer une erreur
-        // TODO: Si la salle n'est pas en phase 'lobby', envoyer une erreur
-        // TODO: Appeler room.addPlayer(message.name, ws)
-        // TODO: Stocker l'association ws -> { room, playerId } dans clientRoomMap
+        const room = rooms.get(message.quizCode)
+
+        if (!room) {
+          send(ws, { type: 'error', message: 'Code de quiz invalide' })
+          return
+        }
+        if (room.phase !== 'lobby') {
+          send(ws, { type: 'error', message: 'Impossible de rejoindre un quiz en cours' })
+          return
+        }
+        const playerId = room.addPlayer(message.name, ws)
+        clientRoomMap.set(ws, { room, playerId })
         break
       }
 
@@ -65,9 +67,13 @@ wss.on('connection', (ws: WebSocket) => {
       // Un joueur envoie sa reponse
       // ============================================================
       case 'answer': {
-        // TODO: Recuperer le { room, playerId } depuis clientRoomMap
-        // TODO: Si non trouve, envoyer une erreur
-        // TODO: Appeler room.handleAnswer(playerId, message.choiceIndex)
+        const infoClient = clientRoomMap.get(ws)
+        if (!infoClient) {
+          send(ws, { type: 'error', message: 'Vous devez rejoindre un quiz avant de repondre' })
+          return
+        }
+        const { room, playerId } = infoClient
+        room.handleAnswer(playerId, message.choiceIndex)
         break
       }
 
@@ -75,13 +81,18 @@ wss.on('connection', (ws: WebSocket) => {
       // Le host cree un nouveau quiz
       // ============================================================
       case 'host:create': {
-        // TODO: Generer un code unique avec generateQuizCode()
-        // TODO: Creer une nouvelle QuizRoom (id = Date.now().toString(), code)
-        // TODO: Assigner hostWs, title, questions sur la room
-        // TODO: Stocker la room dans rooms (cle = code)
-        // TODO: Stocker l'association host ws -> room dans hostRoomMap
-        // TODO: Envoyer un message sync au host : { type: 'sync', phase: 'lobby', data: { quizCode: code } }
-        console.log(`[Server] Quiz cree avec le code: ???`)
+        const uniqueCode = generateQuizCode()
+        const room = new QuizRoom(Date.now().toString(), uniqueCode)
+
+        room.hostWs = ws
+        room.title = message.title
+        room.questions = message.questions
+        rooms.set(uniqueCode, room)
+
+        hostRoomMap.set(ws, room)
+
+        send(ws, { type: 'sync', phase: 'lobby', data: { quizCode: uniqueCode } })
+        console.log(`[Server] Quiz cree avec le code: ${uniqueCode}`)
         break
       }
 
@@ -89,9 +100,12 @@ wss.on('connection', (ws: WebSocket) => {
       // Le host demarre le quiz
       // ============================================================
       case 'host:start': {
-        // TODO: Recuperer la room depuis hostRoomMap
-        // TODO: Si non trouvee, envoyer une erreur
-        // TODO: Appeler room.start()
+        const room = hostRoomMap.get(ws)
+        if (!room) {
+          send(ws, { type: 'error', message: 'Vous n\'etes pas un host valide' })
+          return
+        }
+        room.start()
         break
       }
 
@@ -99,9 +113,12 @@ wss.on('connection', (ws: WebSocket) => {
       // Le host passe a la question suivante
       // ============================================================
       case 'host:next': {
-        // TODO: Recuperer la room depuis hostRoomMap
-        // TODO: Si non trouvee, envoyer une erreur
-        // TODO: Appeler room.nextQuestion()
+        const room = hostRoomMap.get(ws)
+        if (!room) {
+          send(ws, { type: 'error', message: 'Vous n\'etes pas un host valide' })
+          return
+        }
+        room.nextQuestion()
         break
       }
 
@@ -109,11 +126,21 @@ wss.on('connection', (ws: WebSocket) => {
       // Le host termine le quiz
       // ============================================================
       case 'host:end': {
-        // TODO: Recuperer la room depuis hostRoomMap
-        // TODO: Si non trouvee, envoyer une erreur
-        // TODO: Appeler room.end()
-        // TODO: Supprimer la room de rooms
-        // TODO: Nettoyer hostRoomMap et clientRoomMap
+        const room = hostRoomMap.get(ws)
+        if (!room) {
+          send(ws, { type: 'error', message: 'Vous n\'etes pas un host valide' })
+          return
+        }
+
+        room.end()
+
+        rooms.delete(room.code)
+        hostRoomMap.delete(ws)
+        for (const [clientWs, info] of clientRoomMap.entries()) {
+          if (info.room === room) {
+            clientRoomMap.delete(clientWs)
+          }
+        }
         break
       }
 
@@ -127,8 +154,13 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('close', () => {
     console.log('[Server] Connexion fermee')
 
-    // TODO: Nettoyer clientRoomMap si c'etait un joueur
-    // TODO: Nettoyer hostRoomMap si c'etait un host
+    const infoClient = clientRoomMap.get(ws)
+    if (infoClient && infoClient.playerId) {
+      clientRoomMap.delete(ws)
+    }
+    if (hostRoomMap.has(ws)) {
+      hostRoomMap.delete(ws)
+    }
   })
 
   ws.on('error', (err: Error) => {
