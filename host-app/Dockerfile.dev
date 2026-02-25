@@ -1,0 +1,6 @@
+FROM node:20-alpine
+
+WORKDIR /workspace/host-app
+
+COPY host-app/package*.json ./
+RUN npm install

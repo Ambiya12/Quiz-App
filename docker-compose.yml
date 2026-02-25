@@ -1,0 +1,54 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.dev
+    container_name: quiz-server-dev
+    working_dir: /workspace/server
+    command: npm run dev
+    ports:
+      - '3001:3001'
+    volumes:
+      - .:/workspace
+      - server_node_modules:/workspace/server/node_modules
+
+  host-app:
+    build:
+      context: .
+      dockerfile: host-app/Dockerfile.dev
+    container_name: quiz-host-dev
+    working_dir: /workspace/host-app
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - '5173:5173'
+    environment:
+      - VITE_WS_URL=ws://localhost:3001
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - server
+    volumes:
+      - .:/workspace
+      - host_node_modules:/workspace/host-app/node_modules
+
+  player-app:
+    build:
+      context: .
+      dockerfile: player-app/Dockerfile.dev
+    container_name: quiz-player-dev
+    working_dir: /workspace/player-app
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - '5174:5174'
+    environment:
+      - VITE_WS_URL=ws://localhost:3001
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - server
+    volumes:
+      - .:/workspace
+      - player_node_modules:/workspace/player-app/node_modules
+
+volumes:
+  server_node_modules:
+  host_node_modules:
+  player_node_modules:

@@ -1,0 +1,6 @@
+FROM node:20-alpine
+
+WORKDIR /workspace/server
+
+COPY server/package*.json ./
+RUN npm install
