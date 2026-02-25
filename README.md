@@ -110,6 +110,25 @@ cd player-app
 npm run dev
 ```
 
+## Demarrage avec Docker Compose (1 commande)
+
+Lance le serveur + host-app + player-app en mode dev avec hot reload.
+
+```bash
+docker compose up --build
+```
+
+Ports exposes :
+- Serveur WS : `3001`
+- Host App : `5173`
+- Player App : `5174`
+
+Arreter les services :
+
+```bash
+docker compose down
+```
+
 ## Repartition de l'equipe (3 personnes)
 
 ### Personne 1 : Serveur (`server/`)
