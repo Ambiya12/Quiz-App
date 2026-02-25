@@ -48,10 +48,78 @@ function CreateQuiz({ onSubmit }: CreateQuizProps) {
     <div className="phase-container">
       <h1>Creer un Quiz</h1>
       <form className="create-form" onSubmit={handleSubmit}>
-        {/* TODO: Champ titre */}
-        {/* TODO: Liste des questions avec .question-card */}
-        {/* TODO: Bouton ajouter une question */}
-        {/* TODO: Bouton soumettre */}
+        <div className="form-group">
+          <label htmlFor="quiz-title">Titre du quiz</label>
+          <input
+            id="quiz-title"
+            type="text"
+            value=""
+            onChange={(event) => {}}
+            placeholder="Ex: Culture generale"
+          />
+        </div>
+
+          <div className="question-card">
+            <div className="question-card-header">
+              <h3>Question</h3>
+              <button
+                type="button"
+                className="btn-remove"
+                onClick={() => {}}
+              >
+                Supprimer
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Texte de la question</label>
+              <input
+                id={`question-text`}
+                type="text"
+                value=""
+                onChange={(event) => {}}
+                placeholder="Ex: Quelle est la capitale de la France ?"
+              />
+            </div>
+
+            <div className="choices-inputs">
+                <div className="choice-input-group">
+                  <input
+                    type="radio"
+                    name=""
+                    checked={false}
+                    onChange={() => {}}
+                  />
+                  <input
+                    type="text"
+                    value=""
+                    onChange={() => {}}
+                    placeholder={`Choix 1 (ex: Paris)`}
+                  />
+                </div>
+            </div>
+
+            <div className="form-group">
+              <label>Duree (secondes)</label>
+              <input
+                id="question-timer"
+                type="number"
+                min={5}
+                max={120}
+                value=""
+                onChange={() => {}}
+                placeholder="Ex: 30"
+              />
+            </div>
+          </div>
+
+        <button type="button" className="btn-add-question" onClick={() => {}}>
+          Ajouter une question
+        </button>
+
+        <button type="submit" className="btn-primary">
+          Creer le quiz
+        </button>
       </form>
     </div>
   )
